@@ -1,4 +1,5 @@
 import json
+import logging
 import os
 import re
 from pathlib import Path
@@ -8,6 +9,8 @@ from groq import Groq
 from youtube_transcript_api import YouTubeTranscriptApi
 import yt_dlp
 
+logger = logging.getLogger(__name__)
+
 
 # ==========================================================
 # Load Environment Variables
@@ -15,8 +18,15 @@ import yt_dlp
 
 load_dotenv(Path(__file__).resolve().parent / ".env")
 
-GROQ_API_KEY = os.getenv("GROQ_API_KEY")
-client = Groq(api_key=GROQ_API_KEY) if GROQ_API_KEY else None
+
+def get_groq_client():
+    """Return a Groq client using the current GROQ_API_KEY environment variable."""
+
+    api_key = os.getenv("GROQ_API_KEY")
+    if not api_key:
+        raise RuntimeError("GROQ_API_KEY is not configured. Add it to your environment before running the app.")
+
+    return Groq(api_key=api_key)
 
 
 # ==========================================================
@@ -109,6 +119,7 @@ def get_transcript(video_id):
     """Fetch the best available transcript for the given video ID."""
 
     try:
+        logger.info("Fetching transcript... video_id=%s", video_id)
         api = YouTubeTranscriptApi()
         transcript_list = api.list(video_id)
 
@@ -118,8 +129,17 @@ def get_transcript(video_id):
             transcript = next(iter(transcript_list))
 
         fetched = transcript.fetch()
-        return " ".join(snippet.text for snippet in fetched)
+        transcript_text = " ".join(snippet.text for snippet in fetched)
+        logger.info("Transcript retrieved successfully for video_id=%s", video_id)
+        return transcript_text
     except Exception as exc:
+        logger.error(
+            "Transcript retrieval failed for video_id=%s. Exception type: %s; message: %s",
+            video_id,
+            type(exc).__name__,
+            str(exc),
+            exc_info=True,
+        )
         message = str(exc).lower()
         if "private" in message or "unavailable" in message or "live" in message or "disabled" in message:
             raise RuntimeError(
@@ -161,8 +181,8 @@ def build_prompt(video_title, transcript):
 def invoke_llm(prompt):
     """Send the prompt to Groq and return the parsed JSON response."""
 
-    if client is None:
-        raise RuntimeError("GROQ_API_KEY is not configured. Add it to your environment before running the app.")
+    logger.info("Invoking Groq")
+    client = get_groq_client()
 
     try:
         response = client.chat.completions.create(
@@ -172,6 +192,7 @@ def invoke_llm(prompt):
             messages=[{"role": "user", "content": prompt}],
         )
         output = response.choices[0].message.content.strip()
+        logger.info("Groq completed")
         return json.loads(output)
     except json.JSONDecodeError as exc:
         raise RuntimeError("Groq returned an invalid response format.") from exc
@@ -185,12 +206,16 @@ def invoke_llm(prompt):
 def generate_summary(url):
     """Run the full summarization workflow for a YouTube URL."""
 
+    logger.info("Starting summary generation for URL: %s", url)
     try:
         video_id = extract_video_id(url)
     except ValueError as exc:
+        logger.error("Invalid YouTube URL: %s", url, exc_info=True)
         raise RuntimeError("Please provide a valid YouTube video URL.") from exc
 
+    logger.info("Extracted video ID: %s", video_id)
     video_title = get_video_title(url)
+    logger.info("Fetching transcript...")
     transcript = get_transcript(video_id)
 
     MAX_WORDS = 2500

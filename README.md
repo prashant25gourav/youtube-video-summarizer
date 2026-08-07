@@ -99,7 +99,10 @@ Create a `.env` file in the project root.
 
 ```text
 GROQ_API_KEY=your_groq_api_key_here
+BACKEND_URL=http://127.0.0.1:8000
 ```
+
+The `BACKEND_URL` value is used by the Streamlit frontend to call the FastAPI backend.
 
 ---
 

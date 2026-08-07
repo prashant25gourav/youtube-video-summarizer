@@ -106,7 +106,7 @@ GROQ_API_KEY=your_groq_api_key_here
 ### 5️⃣ Start the Backend
 
 ```bash
-uvicorn server:app --reload
+python -m uvicorn server:app --reload
 ```
 
 The FastAPI server will start at
@@ -120,7 +120,7 @@ http://127.0.0.1:8000
 ### 6️⃣ Launch the Frontend
 
 ```bash
-streamlit run ui.py
+python -m streamlit run ui.py
 ```
 
 The Streamlit application will open automatically in your browser.

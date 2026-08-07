@@ -1,6 +1,8 @@
 import json
+import os
 from html import escape
 
+from dotenv import load_dotenv
 import requests
 import streamlit as st
 
@@ -8,6 +10,9 @@ import streamlit as st
 # ==========================================================
 # Streamlit Configuration
 # ==========================================================
+
+load_dotenv()
+backend_url = os.getenv("BACKEND_URL", "http://127.0.0.1:8000").rstrip("/")
 
 st.set_page_config(
     page_title="AI YouTube Video Summarizer",
@@ -748,7 +753,7 @@ if generate:
                 status.update(label="🧠 Building Prompt", state="running")
                 st.write("Building prompt...")
                 response = requests.post(
-                    "http://127.0.0.1:8000/summarize",
+                    f"{backend_url}/summarize",
                     json={"url": youtube_url},
                     timeout=300,
                 )

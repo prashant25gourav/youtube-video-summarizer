@@ -11,7 +11,7 @@ import streamlit as st
 
 st.set_page_config(
     page_title="AI YouTube Video Summarizer",
-    page_icon="🎥",
+    page_icon="▶️",
     layout="wide",
     initial_sidebar_state="collapsed",
 )
@@ -59,7 +59,7 @@ st.markdown(
         overflow: hidden;
         padding: 1.35rem 1.6rem;
         border-radius: 22px;
-        background: linear-gradient(135deg, #0f172a 0%, #1d4ed8 45%, #7c3aed 100%);
+        background: linear-gradient(135deg, #0f172a 0%, #CC0000 45%, #FF0000 100%);
         box-shadow: 0 24px 60px rgba(15, 23, 42, 0.3);
         margin-bottom: 0.85rem;
         border: 1px solid rgba(255, 255, 255, 0.12);
@@ -81,7 +81,7 @@ st.markdown(
         align-items: center;
         gap: 0.4rem;
         padding: 0.4rem 0.7rem;
-        background: rgba(255, 255, 255, 0.16);
+        background: rgba(255, 245, 245, 0.18);
         border: 1px solid rgba(255, 255, 255, 0.2);
         border-radius: 999px;
         font-size: 0.78rem;
@@ -144,7 +144,7 @@ st.markdown(
     .card-surface:hover {
         transform: translateY(-2px);
         box-shadow: 0 22px 48px rgba(2, 6, 23, 0.26);
-        border-color: rgba(96, 165, 250, 0.35);
+        border-color: rgba(255, 0, 0, 0.35);
     }
 
     .media-card img {
@@ -200,7 +200,7 @@ st.markdown(
         font-weight: 700;
         text-transform: uppercase;
         letter-spacing: 0.08em;
-        color: #7dd3fc;
+        color: #FF0000;
     }
 
     .info-value {
@@ -288,7 +288,7 @@ st.markdown(
 
     .point-card:hover {
         transform: translateY(-2px);
-        border-color: rgba(96, 165, 250, 0.35);
+        border-color: rgba(255, 0, 0, 0.35);
         box-shadow: 0 18px 40px rgba(2, 6, 23, 0.22);
     }
 
@@ -300,7 +300,7 @@ st.markdown(
         width: 34px;
         height: 34px;
         border-radius: 999px;
-        background: linear-gradient(135deg, #38bdf8, #818cf8);
+        background: linear-gradient(135deg, #CC0000, #FF0000);
         color: white;
         font-size: 1rem;
         font-weight: 700;
@@ -328,22 +328,22 @@ st.markdown(
         font-size: 0.9rem;
         font-weight: 600;
         color: #f8fafc;
-        background: linear-gradient(135deg, rgba(56, 189, 248, 0.32), rgba(129, 140, 248, 0.3));
-        border: 1px solid rgba(125, 211, 252, 0.26);
-        box-shadow: 0 10px 20px rgba(56, 189, 248, 0.12);
+        background: linear-gradient(135deg, rgba(255, 245, 245, 0.95), rgba(255, 0, 0, 0.14));
+        border: 1px solid rgba(255, 0, 0, 0.28);
+        box-shadow: 0 10px 20px rgba(255, 0, 0, 0.12);
         transition: transform 200ms ease, background 200ms ease, box-shadow 200ms ease;
     }
 
     .chip:hover {
         transform: translateY(-1px);
-        background: linear-gradient(135deg, rgba(56, 189, 248, 0.38), rgba(129, 140, 248, 0.35));
-        box-shadow: 0 12px 24px rgba(56, 189, 248, 0.18);
+        background: linear-gradient(135deg, rgba(255, 245, 245, 0.98), rgba(255, 0, 0, 0.2));
+        box-shadow: 0 12px 24px rgba(255, 0, 0, 0.18);
     }
 
     .takeaway-card {
         background: rgba(15, 23, 42, 0.9);
         border: 1px solid rgba(148, 163, 184, 0.16);
-        border-left: 5px solid #38bdf8;
+        border-left: 5px solid #FF0000;
         border-radius: 18px;
         padding: 1rem 1.05rem;
         margin-top: 0.8rem;
@@ -353,7 +353,7 @@ st.markdown(
 
     .takeaway-card:hover {
         transform: translateY(-2px);
-        border-color: rgba(96, 165, 250, 0.35);
+        border-color: rgba(255, 0, 0, 0.35);
         box-shadow: 0 18px 40px rgba(2, 6, 23, 0.2);
     }
 
@@ -377,7 +377,7 @@ st.markdown(
 
     .timeline-card:hover {
         transform: translateY(-2px);
-        border-color: rgba(96, 165, 250, 0.35);
+        border-color: rgba(255, 0, 0, 0.35);
         box-shadow: 0 18px 40px rgba(2, 6, 23, 0.2);
     }
 
@@ -388,7 +388,7 @@ st.markdown(
         width: 44px;
         height: 44px;
         border-radius: 50%;
-        background: linear-gradient(135deg, #0ea5e9, #6366f1);
+        background: linear-gradient(135deg, #CC0000, #FF0000);
         color: white;
         font-weight: 700;
         font-size: 0.95rem;
@@ -425,9 +425,9 @@ st.markdown(
         border-radius: 16px;
         font-size: 0.98rem;
         font-weight: 700;
-        background: linear-gradient(135deg, #2563eb, #7c3aed);
+        background: linear-gradient(135deg, #CC0000, #FF0000);
         color: white;
-        box-shadow: 0 16px 28px rgba(37, 99, 235, 0.24);
+        box-shadow: 0 16px 28px rgba(255, 0, 0, 0.24);
         transition: transform 200ms ease, box-shadow 200ms ease, filter 200ms ease;
         cursor: pointer;
         display: block;
@@ -436,7 +436,7 @@ st.markdown(
 
     div.stButton > button:hover {
         transform: translateY(-1px) scale(1.01);
-        box-shadow: 0 18px 34px rgba(37, 99, 235, 0.32);
+        box-shadow: 0 18px 34px rgba(230, 0, 0, 0.32);
         filter: brightness(1.03);
     }
 
@@ -450,8 +450,8 @@ st.markdown(
     }
 
     .stTextInput > div > div > input:focus {
-        border-color: rgba(96, 165, 250, 0.45);
-        box-shadow: 0 0 0 3px rgba(96, 165, 250, 0.1);
+        border-color: rgba(255, 0, 0, 0.45);
+        box-shadow: 0 0 0 3px rgba(255, 0, 0, 0.1);
     }
 
     .footer-note {

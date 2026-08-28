@@ -95,10 +95,19 @@ pip install -r requirements.txt
 
 ### 4️⃣ Configure Environment Variables
 
-Create a `.env` file in the project root.
+Create a `.env` file in the project root:
 
 ```text
+# Required
 GROQ_API_KEY=your_groq_api_key_here
+
+# Optional Configurations
+GROQ_MODEL=llama-3.3-70b-versatile
+BACKEND_URL=http://127.0.0.1:8000
+
+# Cloud Deployment (Bypass YouTube Cloud IP Block)
+RAPIDAPI_KEY=your_rapidapi_key_here
+RAPIDAPI_HOST=youtube-transcriptor.p.rapidapi.com
 ```
 
 ---

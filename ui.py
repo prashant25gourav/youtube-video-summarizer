@@ -1,8 +1,11 @@
 import json
+import os
 from html import escape
 
 import requests
 import streamlit as st
+
+BACKEND_URL = os.getenv("BACKEND_URL", "http://127.0.0.1:8000").rstrip("/")
 
 
 # ==========================================================
@@ -715,7 +718,7 @@ def render_results(result):
 st.markdown(
     """
     <div class="hero-shell">
-        <div class="hero-pill">⚡ Premium AI Workspace</div>
+        <div class="hero-pill">⚡ AI Portfolio Project</div>
         <h1 class="hero-title">🎥 AI YouTube Video Summarizer</h1>
         <p class="hero-subtitle">Summarize any YouTube video instantly using Groq LLM and turn long content into concise, polished insights with structured takeaways and next steps.</p>
     </div>
@@ -726,7 +729,7 @@ st.markdown(
 st.markdown("<div class='input-card'>", unsafe_allow_html=True)
 st.markdown("<div class='section-title'>Paste a YouTube URL</div>", unsafe_allow_html=True)
 youtube_url = st.text_input(
-    "",
+    "YouTube Video URL",
     placeholder="https://www.youtube.com/watch?v=...",
     label_visibility="collapsed",
 )
@@ -748,7 +751,7 @@ if generate:
                 status.update(label="🧠 Building Prompt", state="running")
                 st.write("Building prompt...")
                 response = requests.post(
-                    "http://127.0.0.1:8000/summarize",
+                    f"{BACKEND_URL}/summarize",
                     json={"url": youtube_url},
                     timeout=300,
                 )

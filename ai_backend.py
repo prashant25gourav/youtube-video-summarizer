@@ -10,13 +10,20 @@ import yt_dlp
 
 
 # ==========================================================
-# Load Environment Variables
+# Load Environment Variables & Groq Client Helper
 # ==========================================================
 
 load_dotenv(Path(__file__).resolve().parent / ".env")
 
-GROQ_API_KEY = os.getenv("GROQ_API_KEY")
-client = Groq(api_key=GROQ_API_KEY) if GROQ_API_KEY else None
+
+def get_groq_client():
+    """Lazily instantiate and return the Groq client."""
+    api_key = os.getenv("GROQ_API_KEY")
+    if not api_key:
+        raise RuntimeError(
+            "GROQ_API_KEY is not configured. Add it to your environment or .env file before running the app."
+        )
+    return Groq(api_key=api_key)
 
 
 # ==========================================================
@@ -44,11 +51,8 @@ def extract_video_id(url):
     Extracts the 11-character YouTube Video ID.
 
     Supported URLs:
-
     https://www.youtube.com/watch?v=xxxx
-
     https://youtu.be/xxxx
-
     https://youtube.com/embed/xxxx
     """
 
@@ -68,57 +72,130 @@ def extract_video_id(url):
 
 def get_video_title(url):
     """
-    Fetches the title of a YouTube video.
+    Fetches the title of a YouTube video using YouTube oEmbed (cloud-friendly)
+    with yt-dlp fallback.
     """
+    import requests
 
+    # 1. Try official YouTube oEmbed (fast, lightweight, never blocked on cloud IPs)
     try:
-
-        ydl_opts = {
-
-            "quiet": True,
-
-            "skip_download": True,
-
-            "extract_flat": True,
-
-            "no_warnings": True
-
-        }
-
-        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-
-            info = ydl.extract_info(
-                url,
-                download=False
-            )
-
-        return info.get(
-            "title",
-            "Unknown Title"
-        )
-
+        oembed_url = f"https://www.youtube.com/oembed?url={url}&format=json"
+        resp = requests.get(oembed_url, timeout=5)
+        if resp.status_code == 200:
+            data = resp.json()
+            if "title" in data and data["title"]:
+                return data["title"]
     except Exception:
+        pass
 
+    # 2. Fallback to yt-dlp
+    try:
+        ydl_opts = {
+            "quiet": True,
+            "skip_download": True,
+            "extract_flat": True,
+            "no_warnings": True,
+        }
+        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+            info = ydl.extract_info(url, download=False)
+        return info.get("title", "Unknown Title")
+    except Exception:
         return "Unknown Title"
 
+
 # ==========================================================
-# Fetch Transcript
+# Fetch Transcript (RapidAPI + youtube-transcript-api fallback)
 # ==========================================================
+
+def _fetch_transcript_rapidapi(video_id):
+    """Fetch transcript via RapidAPI to bypass cloud IP blocks."""
+    import requests
+
+    rapidapi_key = os.getenv("RAPIDAPI_KEY")
+    if not rapidapi_key:
+        return None
+
+    rapidapi_host = os.getenv("RAPIDAPI_HOST", "youtube-transcriptor.p.rapidapi.com")
+    rapidapi_url = os.getenv("RAPIDAPI_URL", f"https://{rapidapi_host}/transcript")
+
+    headers = {
+        "x-rapidapi-key": rapidapi_key,
+        "x-rapidapi-host": rapidapi_host,
+    }
+    params = {"video_id": video_id}
+
+    try:
+        response = requests.get(rapidapi_url, headers=headers, params=params, timeout=15)
+        if response.status_code == 200:
+            data = response.json()
+
+            # Target dictionary (first item if list, or dictionary itself)
+            item = data[0] if isinstance(data, list) and len(data) > 0 else (data if isinstance(data, dict) else None)
+
+            if isinstance(item, dict):
+                # 1. Priority 1: transcriptionAsText string directly
+                as_text = item.get("transcriptionAsText")
+                if isinstance(as_text, str) and as_text.strip():
+                    return as_text.strip()
+
+                # 2. Priority 2: iterate through transcription list and concatenate subtitles
+                transcription_list = item.get("transcription")
+                if isinstance(transcription_list, list):
+                    subtitles = [
+                        seg.get("subtitle") or seg.get("text")
+                        for seg in transcription_list
+                        if isinstance(seg, dict)
+                    ]
+                    joined = " ".join(s for s in subtitles if s and isinstance(s, str))
+                    if joined.strip():
+                        return joined.strip()
+
+                # Alternate field fallbacks
+                if "transcript" in item:
+                    t = item["transcript"]
+                    if isinstance(t, str) and t.strip():
+                        return t.strip()
+                    if isinstance(t, list):
+                        joined = " ".join(seg.get("text", "") for seg in t if isinstance(seg, dict))
+                        if joined.strip():
+                            return joined.strip()
+
+                if "text" in item and isinstance(item["text"], str) and item["text"].strip():
+                    return item["text"].strip()
+
+        elif response.status_code in (401, 403):
+            return None
+    except Exception:
+        return None
+
+    return None
+
+
+def _fetch_transcript_local(video_id):
+    """Fetch transcript using youtube-transcript-api (works on residential IPs)."""
+    api = YouTubeTranscriptApi()
+    transcript_list = api.list(video_id)
+
+    try:
+        transcript = transcript_list.find_transcript(["en"])
+    except Exception:
+        transcript = next(iter(transcript_list))
+
+    fetched = transcript.fetch()
+    return " ".join(snippet.text for snippet in fetched)
+
 
 def get_transcript(video_id):
     """Fetch the best available transcript for the given video ID."""
+    # 1. Try RapidAPI if configured (recommended for cloud deployments)
+    if os.getenv("RAPIDAPI_KEY"):
+        rapid_text = _fetch_transcript_rapidapi(video_id)
+        if rapid_text and rapid_text.strip():
+            return rapid_text.strip()
 
+    # 2. Try youtube-transcript-api
     try:
-        api = YouTubeTranscriptApi()
-        transcript_list = api.list(video_id)
-
-        try:
-            transcript = transcript_list.find_transcript(["en"])
-        except Exception:
-            transcript = next(iter(transcript_list))
-
-        fetched = transcript.fetch()
-        return " ".join(snippet.text for snippet in fetched)
+        return _fetch_transcript_local(video_id)
     except Exception as exc:
         message = str(exc).lower()
         if "private" in message or "unavailable" in message or "live" in message or "disabled" in message:
@@ -126,8 +203,9 @@ def get_transcript(video_id):
                 "This video is private, unavailable, or does not provide captions/transcripts."
             ) from exc
         raise RuntimeError(
-            "Unable to retrieve a transcript for this video. The video may be private, live, or missing captions."
+            "Unable to retrieve a transcript for this video. The video may be private, live, missing captions, or blocked by YouTube."
         ) from exc
+
 
 # ==========================================================
 # Build Prompt
@@ -135,22 +213,11 @@ def get_transcript(video_id):
 
 def build_prompt(video_title, transcript):
     """
-    Injects the transcript and video title
-    into prompt.md.
+    Injects the transcript and video title into prompt.md.
     """
-
     prompt = load_prompt()
-
-    prompt = prompt.replace(
-        "{{video_title}}",
-        video_title
-    )
-
-    prompt = prompt.replace(
-        "{{transcript}}",
-        transcript
-    )
-
+    prompt = prompt.replace("{{video_title}}", video_title)
+    prompt = prompt.replace("{{transcript}}", transcript)
     return prompt
 
 
@@ -160,13 +227,12 @@ def build_prompt(video_title, transcript):
 
 def invoke_llm(prompt):
     """Send the prompt to Groq and return the parsed JSON response."""
-
-    if client is None:
-        raise RuntimeError("GROQ_API_KEY is not configured. Add it to your environment before running the app.")
+    client = get_groq_client()
+    model = os.getenv("GROQ_MODEL", "openai/gpt-oss-120b")
 
     try:
         response = client.chat.completions.create(
-            model="llama-3.3-70b-versatile",
+            model=model,
             temperature=0.3,
             response_format={"type": "json_object"},
             messages=[{"role": "user", "content": prompt}],
@@ -176,7 +242,13 @@ def invoke_llm(prompt):
     except json.JSONDecodeError as exc:
         raise RuntimeError("Groq returned an invalid response format.") from exc
     except Exception as exc:
-        raise RuntimeError("Groq could not generate a summary right now. Please try again shortly.") from exc
+        err_str = str(exc).lower()
+        if "decommissioned" in err_str or "not exist" in err_str or "model_not_found" in err_str:
+            raise RuntimeError(
+                f"Configured Groq model '{model}' is unavailable or decommissioned. Set GROQ_MODEL in your .env to an active model (e.g. openai/gpt-oss-120b or openai/gpt-oss-20b)."
+            ) from exc
+        raise RuntimeError(f"Groq generation failed: {exc}") from exc
+
 
 # ==========================================================
 # Complete AI Pipeline

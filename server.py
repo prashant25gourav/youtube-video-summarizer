@@ -4,6 +4,8 @@ from pydantic import BaseModel
 from ai_backend import generate_summary
 
 
+from fastapi.middleware.cors import CORSMiddleware
+
 # ==========================================================
 # FastAPI App
 # ==========================================================
@@ -12,6 +14,15 @@ app = FastAPI(
     title="AI YouTube Video Summarizer API",
     description="Generate AI-powered summaries from YouTube videos using Groq LLM.",
     version="1.0.0"
+)
+
+# Enable CORS for cross-domain deployments
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
 
 

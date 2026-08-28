@@ -1,210 +1,193 @@
 # 🎥 AI YouTube Video Summarizer
 
-An AI-powered web application that transforms YouTube videos into concise, structured summaries using **Groq LLM**, **FastAPI**, and **Streamlit**.
+An AI-powered web application that converts YouTube videos into concise, structured summaries using **Groq LLM, FastAPI, Streamlit, and RapidAPI**.
 
-Simply paste a YouTube video URL and receive an AI-generated summary with key points, takeaways, keywords, target audience, difficulty level, and recommended next steps.
+🔗 **Live Demo:** `https://youtube-video-summarizer-frontend.onrender.com/`
 
 ---
 
 ## ✨ Features
 
-- 🎥 Summarize any YouTube video using its URL
-- 🤖 AI-powered summaries with Groq LLM
+- 🎥 Summarize YouTube videos from a URL
+- 🤖 AI-generated structured summaries
 - 📝 Automatic transcript extraction
-- 📌 Structured summary
-- ⭐ Key Points
-- 💡 Takeaways
+- ⭐ Key points and takeaways
 - 🏷️ Keywords
-- 🎯 Target Audience
-- 📊 Difficulty Level
-- 🚀 Recommended Next Steps
-- 📥 Download summaries as **JSON** or **Markdown**
-- 🎨 Modern Streamlit interface
+- 🎯 Target audience
+- 📊 Difficulty level
+- 🚀 Recommended next steps
+- 📥 Download summaries as JSON or Markdown
+- ☁️ Deployed frontend and backend
 
 ---
 
 ## 🛠️ Tech Stack
 
-- Python
-- FastAPI
-- Streamlit
-- Groq API
-- yt-dlp
-- YouTube Transcript API
-- Python Dotenv
+- **Frontend:** Streamlit
+- **Backend:** FastAPI
+- **AI:** Groq API (`openai/gpt-oss-120b`)
+- **Transcript:** RapidAPI + YouTube Transcript API fallback
+- **Video Metadata:** YouTube oEmbed / yt-dlp
+- **Language:** Python
+
+---
+
+## 🖥️ Screenshots
+
+### 🏠 Home Page
+
+<!-- Replace with your screenshot -->
+![Home Page](screenshots/home.png)
+
+### 📊 Generated Summary
+
+<!-- Replace with your screenshot -->
+![Generated Summary](screenshots/summary.png)
+---
+
+## 🔄 How It Works
+
+~~~text
+YouTube URL
+     ↓
+Streamlit Frontend
+     ↓
+FastAPI Backend
+     ↓
+RapidAPI Transcript
+     ↓
+Groq LLM
+     ↓
+Structured Summary
+     ↓
+Streamlit UI
+~~~
+
+---
+
+## 🚀 Run Locally
+
+### 1. Clone the Repository
+
+~~~bash
+git clone https://github.com/YOUR_USERNAME/youtube-video-summarizer.git
+cd youtube-video-summarizer
+~~~
+
+### 2. Create Environment & Install Dependencies
+
+**Windows:**
+
+~~~bash
+python -m venv .venv
+.venv\Scripts\activate
+pip install -r requirements.txt
+~~~
+
+**Linux / macOS:**
+
+~~~bash
+python3 -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
+~~~
+
+### 3. Configure Environment Variables
+
+Create a `.env` file in the project root:
+
+~~~text
+GROQ_API_KEY=your_groq_api_key
+RAPIDAPI_KEY=your_rapidapi_key
+RAPIDAPI_HOST=youtube-transcriptor.p.rapidapi.com
+BACKEND_URL=http://127.0.0.1:8000
+~~~
+
+### 4. Start the Backend
+
+~~~bash
+python -m uvicorn server:app --reload
+~~~
+
+FastAPI runs at:
+
+~~~text
+http://127.0.0.1:8000
+~~~
+
+### 5. Start the Frontend
+
+Open another terminal:
+
+~~~bash
+python -m streamlit run ui.py
+~~~
+
+---
+
+## ☁️ Deployment
+
+The application is deployed on **Render** as two services:
+
+~~~text
+Streamlit Frontend
+        ↓
+FastAPI Backend
+        ↓
+RapidAPI + Groq
+~~~
+
+**Frontend:** `https://youtube-video-summarizer-frontend.onrender.com/`
+
+**Backend:** `https://youtube-video-summarizer-cmhe.onrender.com`
+
+### Backend Environment Variables
+
+~~~text
+GROQ_API_KEY
+RAPIDAPI_KEY
+~~~
+
+### Frontend Environment Variable
+
+~~~text
+BACKEND_URL=https://youtube-video-summarizer-cmhe.onrender.com
+~~~
 
 ---
 
 ## 📂 Project Structure
 
-```text
+~~~text
 youtube-video-summarizer/
 │
-├── screenshots/          # README screenshots
-├── ai_backend.py         # AI summarization pipeline
-├── server.py             # FastAPI backend
-├── ui.py                 # Streamlit frontend
-├── prompt.md             # Prompt template
-├── requirements.txt      # Dependencies
-├── README.md             # Documentation
-├── .gitignore            # Git ignore rules
-└── .env                  # API key (not pushed to GitHub)
-```
+├── ai_backend.py
+├── server.py
+├── ui.py
+├── prompt.md
+├── requirements.txt
+├── README.md
+├── screenshots/
+└── .gitignore
+~~~
 
 ---
 
-## 🚀 Getting Started
+## 🔮 Future Improvements
 
-### 1️⃣ Clone the Repository
-
-```bash
-git clone https://github.com/YOUR_USERNAME/youtube-video-summarizer.git
-
-cd youtube-video-summarizer
-```
-
----
-
-### 2️⃣ Create a Virtual Environment (Recommended)
-
-**Windows**
-
-```bash
-python -m venv .venv
-
-.venv\Scripts\activate
-```
-
-**Linux / macOS**
-
-```bash
-python3 -m venv .venv
-
-source .venv/bin/activate
-```
-
----
-
-### 3️⃣ Install Dependencies
-
-```bash
-pip install -r requirements.txt
-```
-
----
-
-### 4️⃣ Configure Environment Variables
-
-Create a `.env` file in the project root:
-
-```text
-# Required
-GROQ_API_KEY=your_groq_api_key_here
-
-# Optional Configurations
-GROQ_MODEL=llama-3.3-70b-versatile
-BACKEND_URL=http://127.0.0.1:8000
-
-# Cloud Deployment (Bypass YouTube Cloud IP Block)
-RAPIDAPI_KEY=your_rapidapi_key_here
-RAPIDAPI_HOST=youtube-transcriptor.p.rapidapi.com
-```
-
----
-
-### 5️⃣ Start the Backend
-
-```bash
-python -m uvicorn server:app --reload
-```
-
-The FastAPI server will start at
-
-```
-http://127.0.0.1:8000
-```
-
----
-
-### 6️⃣ Launch the Frontend
-
-```bash
-python -m streamlit run ui.py
-```
-
-The Streamlit application will open automatically in your browser.
-
----
-
-## 🚀 Demo
-
-The application allows users to:
-
-- Paste any YouTube video URL
-- Generate an AI-powered structured summary
-- View key points, takeaways, keywords, audience, and difficulty
-- Download the generated summary as JSON or Markdown
-
----
-
-## 📷 Screenshots
-
-### Home Page
-
-![Home Page](screenshots/image.png)
-
----
-
-### Generated Summary
-
-![Generated Summary](screenshots/image-1.png)
-
----
-
-## 🔄 How It Works
-
-```text
-YouTube URL
-      │
-      ▼
-Extract Video Information
-      │
-      ▼
-Fetch Transcript
-      │
-      ▼
-Build Prompt
-      │
-      ▼
-Groq LLM
-      │
-      ▼
-Generate Structured Summary
-      │
-      ▼
-Display Results in Streamlit
-```
-
----
-
-## 🎯 Future Improvements
-
-- 🌍 Multi-language support
+- 🌍 Multi-language summaries
 - 💬 Chat with YouTube videos
 - 📄 PDF export
 - 📚 Summary history
 - 👤 User authentication
-- 🎙️ Support videos without transcripts
+- 🗄️ Database integration
 
 ---
 
 ## 📄 License
 
-This project was developed for educational purposes as part of the **Samsung Innovation Campus GenAI Program**.
+Developed for educational purposes as part of the **Samsung Innovation Campus GenAI Program**.
 
----
+## 👨‍💻 Author
 
-## 👨‍💻 Authors
-
-- **Prashant**
-- **Suhana**
+**Prashant** 

@@ -2,8 +2,8 @@
 
 An AI-powered web application that converts YouTube videos into concise, structured summaries using **Groq LLM, FastAPI, Streamlit, and RapidAPI**.
 
-🔗 **Live Demo:** https://youtube-video-summarizer-frontend.onrender.com/
-
+🔗 **Live Demo:** https://youtube-video-summarizer-frontend.onrender.com
+🔗 **Backend URL:** https://youtube-video-summarizer-cmhe.onrender.com
 ---
 
 ## ✨ Features

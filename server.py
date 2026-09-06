@@ -50,6 +50,17 @@ def home():
 
 
 # ==========================================================
+# Health Check Endpoint
+# ==========================================================
+
+@app.get("/health")
+def health_check():
+    """Lightweight health check endpoint for monitoring and cold-start detection."""
+
+    return {"status": "ok"}
+
+
+# ==========================================================
 # Summarization Endpoint
 # ==========================================================
 

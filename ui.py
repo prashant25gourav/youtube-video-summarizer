@@ -1,5 +1,6 @@
 import json
 import os
+import time
 from html import escape
 
 import requests
@@ -567,6 +568,38 @@ def render_error(message):
     )
 
 
+def check_backend_health(status_container=None, max_retries=5, retry_delay=4):
+    """
+    Check if the backend is reachable via GET /health with graceful cold-start retry.
+    Returns True if healthy/responding, False if unavailable after retries.
+    """
+    for attempt in range(1, max_retries + 1):
+        try:
+            resp = requests.get(f"{BACKEND_URL}/health", timeout=5)
+            if resp.status_code in (200, 404):
+                return True
+            if resp.status_code in (502, 503, 504):
+                if status_container:
+                    status_container.update(label="⏳ Waking up backend...", state="running")
+                st.write("Backend is starting up. Please wait a moment...")
+                if attempt < max_retries:
+                    time.sleep(retry_delay)
+                    continue
+        except (requests.exceptions.ConnectionError, requests.exceptions.Timeout):
+            if status_container:
+                status_container.update(label="⏳ Waking up backend...", state="running")
+            st.write("Backend is starting up. Please wait a moment...")
+            if attempt < max_retries:
+                time.sleep(retry_delay)
+                continue
+        except Exception:
+            if attempt < max_retries:
+                time.sleep(retry_delay)
+                continue
+
+    return False
+
+
 def get_metadata_stat(result):
     return ("Video ID", result.get("video_id", "Unknown"))
 
@@ -745,7 +778,18 @@ if generate:
     if not youtube_url.strip():
         render_error("Please enter a YouTube URL before generating a summary.")
     else:
-        with st.status("🎥 Reading Transcript", expanded=True) as status:
+        with st.status("⚡ Connecting to backend...", expanded=True) as status:
+            is_healthy = check_backend_health(status_container=status)
+
+            if not is_healthy:
+                status.update(label="Backend unavailable", state="error")
+                render_error(
+                    "The backend is starting up or temporarily unavailable. Please wait a moment and try again."
+                )
+                st.session_state.summary_result = None
+                st.stop()
+
+            status.update(label="🎥 Reading Transcript", state="running")
             st.write("Reading transcript...")
             try:
                 status.update(label="🧠 Building Prompt", state="running")
@@ -758,30 +802,51 @@ if generate:
 
                 if response.status_code != 200:
                     status.update(label="Generation failed", state="error")
-                    detail = response.json().get("detail", "The backend returned an error.")
+                    try:
+                        detail = response.json().get("detail")
+                    except Exception:
+                        detail = None
+                    if not detail:
+                        if response.status_code >= 500:
+                            detail = f"The backend encountered an internal error (HTTP {response.status_code}). Please try again."
+                        else:
+                            detail = f"Request failed with status code {response.status_code}."
                     render_error(detail)
                     st.session_state.summary_result = None
                     st.stop()
 
                 status.update(label="🤖 Generating Summary", state="running")
                 st.write("Generating summary...")
-                result = response.json()
+                try:
+                    result = response.json()
+                except Exception:
+                    status.update(label="Generation failed", state="error")
+                    render_error("Received an invalid response format from the backend.")
+                    st.session_state.summary_result = None
+                    st.stop()
+
                 st.session_state.summary_result = result
                 status.update(label="📋 Formatting Output", state="running")
                 st.write("Formatting output...")
                 status.update(label="✅ Finished", state="complete")
 
+            except requests.exceptions.Timeout:
+                status.update(label="Request timed out", state="error")
+                render_error("The request timed out while generating the summary. Please try again.")
+                st.session_state.summary_result = None
+                st.stop()
+
             except requests.exceptions.ConnectionError:
                 status.update(label="Connection error", state="error")
                 render_error(
-                    "The backend is currently unavailable. Please start the FastAPI server before generating a summary."
+                    "The connection to the backend was interrupted. Please check if the server is running."
                 )
                 st.session_state.summary_result = None
                 st.stop()
 
             except Exception as exc:
                 status.update(label="Generation failed", state="error")
-                render_error(str(exc))
+                render_error("An unexpected error occurred while generating the summary.")
                 st.session_state.summary_result = None
                 st.stop()
 

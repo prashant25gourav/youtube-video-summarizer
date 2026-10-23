@@ -11,4 +11,4 @@ services:
       - key: RAPIDAPI_KEY
         sync: false
       - key: RAPIDAPI_HOST
-        value: youtube-transcriptor.p.rapidapi.com
+        value: youtube-2-transcript.p.rapidapi.com

@@ -20,12 +20,12 @@ def get_config(key: str, default: str = None) -> str:
     """Read configuration from environment variable, falling back to Streamlit secrets."""
     val = os.getenv(key)
     if val:
-        return val
+        return val.strip().strip('"').strip("'")
     try:
         import streamlit as st
 
         if hasattr(st, "secrets") and key in st.secrets:
-            return str(st.secrets[key])
+            return str(st.secrets[key]).strip().strip('"').strip("'")
     except Exception:
         pass
     return default
@@ -237,20 +237,26 @@ def get_transcript(video_id):
     try:
         return _fetch_transcript_local(video_id)
     except Exception as exc:
-        message = str(exc).lower()
-        if "private" in message or "unavailable" in message or "live" in message or "disabled" in message:
-            raise RuntimeError(
-                "This video is private, unavailable, or does not provide captions/transcripts."
-            ) from exc
-
         if _last_rapidapi_error == "quota_exceeded":
             raise RuntimeError(
                 "RapidAPI monthly request quota has been exceeded (HTTP 429), and direct YouTube access is restricted on cloud IPs. Please refresh or upgrade your RAPIDAPI_KEY."
             ) from exc
 
         if _last_rapidapi_error == "auth_failed":
+            host = get_config("RAPIDAPI_HOST", "youtube-2-transcript.p.rapidapi.com")
             raise RuntimeError(
-                "RapidAPI authentication failed (HTTP 401/403). Please verify your RAPIDAPI_KEY and RAPIDAPI_HOST configuration."
+                f"RapidAPI authentication failed (HTTP 401/403) for host '{host}'. Please verify your RAPIDAPI_KEY and ensure RAPIDAPI_HOST is set to 'youtube-2-transcript.p.rapidapi.com' on Render."
+            ) from exc
+
+        if _last_rapidapi_error and _last_rapidapi_error.startswith("http_"):
+            raise RuntimeError(
+                f"RapidAPI request returned {_last_rapidapi_error}. Direct YouTube access is restricted on cloud IPs. Please verify your RapidAPI subscription."
+            ) from exc
+
+        message = str(exc).lower()
+        if "private" in message or "unavailable" in message or "live" in message or "disabled" in message:
+            raise RuntimeError(
+                "This video is private, unavailable, or does not provide captions/transcripts."
             ) from exc
 
         raise RuntimeError(

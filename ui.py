@@ -900,21 +900,11 @@ if generate:
                 msg = str(exc)
                 msg_lower = msg.lower()
 
-                if "429" in msg_lower or "quota" in msg_lower or "rate limit" in msg_lower:
-                    render_error(
-                        "API rate limit or monthly quota exceeded (HTTP 429). Please wait a few moments or check your API key quota."
-                    )
-                elif "private" in msg_lower or "unavailable" in msg_lower or "live" in msg_lower or "captions" in msg_lower or "transcript" in msg_lower:
+                if "rapidapi" in msg_lower or "401" in msg_lower or "403" in msg_lower or "quota" in msg_lower or "rate limit" in msg_lower or "groq" in msg_lower:
+                    render_error(msg)
+                elif "private" in msg_lower or "unavailable" in msg_lower or "live" in msg_lower or "captions" in msg_lower:
                     render_error(
                         "Unable to retrieve a transcript for this video. The video may be private, live, or have closed captions disabled by the creator."
-                    )
-                elif "groq_api_key" in msg_lower or "not configured" in msg_lower or "auth_failed" in msg_lower or "401" in msg_lower or "403" in msg_lower:
-                    render_error(
-                        "API key is not configured or authentication failed. Please set GROQ_API_KEY in your environment or Streamlit secrets."
-                    )
-                elif "decommissioned" in msg_lower or "model" in msg_lower:
-                    render_error(
-                        "The configured Groq model is unavailable. Please check the GROQ_MODEL setting."
                     )
                 else:
                     render_error(msg)

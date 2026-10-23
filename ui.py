@@ -897,18 +897,7 @@ if generate:
 
             except RuntimeError as exc:
                 status.update(label="Generation failed", state="error")
-                msg = str(exc)
-                msg_lower = msg.lower()
-
-                if "rapidapi" in msg_lower or "401" in msg_lower or "403" in msg_lower or "quota" in msg_lower or "rate limit" in msg_lower or "groq" in msg_lower:
-                    render_error(msg)
-                elif "private" in msg_lower or "unavailable" in msg_lower or "live" in msg_lower or "captions" in msg_lower:
-                    render_error(
-                        "Unable to retrieve a transcript for this video. The video may be private, live, or have closed captions disabled by the creator."
-                    )
-                else:
-                    render_error(msg)
-
+                render_error(str(exc))
                 st.session_state.summary_result = None
                 st.stop()
 

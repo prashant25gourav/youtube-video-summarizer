@@ -133,6 +133,7 @@ def _fetch_transcript_rapidapi(video_id):
 
     rapidapi_key = get_config("RAPIDAPI_KEY")
     if not rapidapi_key:
+        _last_rapidapi_error = "RAPIDAPI_KEY is not configured or empty in environment"
         return None
 
     rapidapi_host = get_config("RAPIDAPI_HOST", "youtube-2-transcript.p.rapidapi.com")
@@ -144,13 +145,13 @@ def _fetch_transcript_rapidapi(video_id):
 
     try:
         if "youtube-2-transcript" in rapidapi_host:
-            rapidapi_url = get_config("RAPIDAPI_URL", f"https://{rapidapi_host}/transcript-with-url")
+            rapidapi_url = f"https://{rapidapi_host}/transcript-with-url"
             params = {
                 "url": f"https://www.youtube.com/watch?v={video_id}",
                 "flat_text": "true",
             }
         else:
-            rapidapi_url = get_config("RAPIDAPI_URL", f"https://{rapidapi_host}/transcript")
+            rapidapi_url = f"https://{rapidapi_host}/transcript"
             params = {"video_id": video_id}
 
         response = requests.get(rapidapi_url, headers=headers, params=params, timeout=15)
@@ -158,14 +159,20 @@ def _fetch_transcript_rapidapi(video_id):
             data = response.json()
 
             # Format 1: {"success": true, "transcript": "..." or [...]} (youtube-2-transcript)
-            if isinstance(data, dict) and "transcript" in data:
-                t = data["transcript"]
-                if isinstance(t, str) and t.strip():
-                    return t.strip()
-                if isinstance(t, list):
-                    joined = " ".join(seg.get("text", "") for seg in t if isinstance(seg, dict))
-                    if joined.strip():
-                        return joined.strip()
+            if isinstance(data, dict):
+                if data.get("success") is False:
+                    err_msg = data.get("error") or data.get("message") or "Transcript not available from RapidAPI."
+                    _last_rapidapi_error = f"RapidAPI ({rapidapi_host}): {str(err_msg).strip()}"
+                    return None
+
+                if "transcript" in data:
+                    t = data["transcript"]
+                    if isinstance(t, str) and t.strip():
+                        return t.strip()
+                    if isinstance(t, list):
+                        joined = " ".join(seg.get("text", "") for seg in t if isinstance(seg, dict))
+                        if joined.strip():
+                            return joined.strip()
 
             # Target dictionary (first item if list, or dictionary itself)
             item = data[0] if isinstance(data, list) and len(data) > 0 else (data if isinstance(data, dict) else None)
@@ -191,24 +198,25 @@ def _fetch_transcript_rapidapi(video_id):
                 if "text" in item and isinstance(item["text"], str) and item["text"].strip():
                     return item["text"].strip()
 
+            _last_rapidapi_error = f"RapidAPI ({rapidapi_host}) returned 200 but transcript field was missing."
+            return None
+
         elif response.status_code == 429:
-            _last_rapidapi_error = "quota_exceeded"
+            _last_rapidapi_error = "RapidAPI monthly quota exceeded (HTTP 429). Please verify your RapidAPI plan or refresh your RAPIDAPI_KEY."
             print(f"[WARN] RapidAPI quota exceeded (HTTP 429): {response.text[:200]}")
             return None
         elif response.status_code in (401, 403):
-            _last_rapidapi_error = "auth_failed"
+            _last_rapidapi_error = f"RapidAPI authentication failed (HTTP {response.status_code}) for host '{rapidapi_host}'. Response: {response.text[:200]}"
             print(f"[WARN] RapidAPI authentication failed (HTTP {response.status_code}): {response.text[:200]}")
             return None
         else:
-            _last_rapidapi_error = f"http_{response.status_code}"
+            _last_rapidapi_error = f"RapidAPI ({rapidapi_host}) returned HTTP {response.status_code}: {response.text[:200]}"
             print(f"[WARN] RapidAPI returned HTTP {response.status_code}: {response.text[:200]}")
             return None
     except Exception as exc:
-        _last_rapidapi_error = "network_error"
+        _last_rapidapi_error = f"RapidAPI request failed ({type(exc).__name__}): {exc}"
         print(f"[WARN] RapidAPI request failed: {exc}")
         return None
-
-    return None
 
 
 def _fetch_transcript_local(video_id):
@@ -227,31 +235,26 @@ def _fetch_transcript_local(video_id):
 
 def get_transcript(video_id):
     """Fetch the best available transcript for the given video ID."""
+    rapid_key = get_config("RAPIDAPI_KEY")
+
     # 1. Try RapidAPI if configured (recommended for cloud deployments)
-    if get_config("RAPIDAPI_KEY"):
+    if rapid_key:
         rapid_text = _fetch_transcript_rapidapi(video_id)
         if rapid_text and rapid_text.strip():
             return rapid_text.strip()
+    else:
+        # Detect cloud deployment (Render, Heroku, Docker, etc.)
+        if os.getenv("RENDER") or os.getenv("PORT"):
+            raise RuntimeError(
+                "RAPIDAPI_KEY is missing or empty in Render Environment variables. Cloud hosting requires RAPIDAPI_KEY because YouTube blocks direct cloud IP access."
+            )
 
-    # 2. Try youtube-transcript-api
+    # 2. Try youtube-transcript-api (residential local IPs)
     try:
         return _fetch_transcript_local(video_id)
     except Exception as exc:
-        if _last_rapidapi_error == "quota_exceeded":
-            raise RuntimeError(
-                "RapidAPI monthly request quota has been exceeded (HTTP 429), and direct YouTube access is restricted on cloud IPs. Please refresh or upgrade your RAPIDAPI_KEY."
-            ) from exc
-
-        if _last_rapidapi_error == "auth_failed":
-            host = get_config("RAPIDAPI_HOST", "youtube-2-transcript.p.rapidapi.com")
-            raise RuntimeError(
-                f"RapidAPI authentication failed (HTTP 401/403) for host '{host}'. Please verify your RAPIDAPI_KEY and ensure RAPIDAPI_HOST is set to 'youtube-2-transcript.p.rapidapi.com' on Render."
-            ) from exc
-
-        if _last_rapidapi_error and _last_rapidapi_error.startswith("http_"):
-            raise RuntimeError(
-                f"RapidAPI request returned {_last_rapidapi_error}. Direct YouTube access is restricted on cloud IPs. Please verify your RapidAPI subscription."
-            ) from exc
+        if _last_rapidapi_error:
+            raise RuntimeError(_last_rapidapi_error) from exc
 
         message = str(exc).lower()
         if "private" in message or "unavailable" in message or "live" in message or "disabled" in message:
@@ -260,7 +263,7 @@ def get_transcript(video_id):
             ) from exc
 
         raise RuntimeError(
-            "Unable to retrieve a transcript for this video. The video may be private, live, missing captions, or blocked by YouTube."
+            f"Unable to retrieve a transcript for this video: {exc}"
         ) from exc
 
 

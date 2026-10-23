@@ -4,8 +4,6 @@ An AI-powered web application that converts YouTube videos into concise, structu
 
 🔗 **Live Demo:** https://youtube-video-summarizer-frontend.onrender.com
 
-> 💡 **Note:** The live demo is hosted on Render's free tier and is kept warm by an external uptime monitor to avoid sleeping and minimize cold-start latency.
-
 ---
 
 ## ✨ Features
@@ -99,7 +97,7 @@ Create a `.env` file in the project root (or configure Streamlit secrets in `.st
 ~~~text
 GROQ_API_KEY=your_groq_api_key
 RAPIDAPI_KEY=your_rapidapi_key
-RAPIDAPI_HOST=youtube-transcriptor.p.rapidapi.com
+RAPIDAPI_HOST=youtube-2-transcript.p.rapidapi.com
 ~~~
 
 ### 4. Start the Application
@@ -133,7 +131,7 @@ Configure the following in the Render service dashboard:
 
 - `GROQ_API_KEY`: Your Groq Cloud API key
 - `RAPIDAPI_KEY`: Your RapidAPI key
-- `RAPIDAPI_HOST`: `youtube-transcriptor.p.rapidapi.com`
+- `RAPIDAPI_HOST`: `youtube-2-transcript.p.rapidapi.com`
 
 ---
 
@@ -171,6 +169,3 @@ youtube-video-summarizer/
 
 Developed for educational purposes as part of the **Samsung Innovation Campus GenAI Program**.
 
-## 👨‍💻 Author
-
-**Prashant**

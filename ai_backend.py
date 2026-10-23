@@ -16,12 +16,27 @@ import yt_dlp
 load_dotenv(Path(__file__).resolve().parent / ".env")
 
 
+def get_config(key: str, default: str = None) -> str:
+    """Read configuration from environment variable, falling back to Streamlit secrets."""
+    val = os.getenv(key)
+    if val:
+        return val
+    try:
+        import streamlit as st
+
+        if hasattr(st, "secrets") and key in st.secrets:
+            return str(st.secrets[key])
+    except Exception:
+        pass
+    return default
+
+
 def get_groq_client():
     """Lazily instantiate and return the Groq client."""
-    api_key = os.getenv("GROQ_API_KEY")
+    api_key = get_config("GROQ_API_KEY")
     if not api_key:
         raise RuntimeError(
-            "GROQ_API_KEY is not configured. Add it to your environment or .env file before running the app."
+            "GROQ_API_KEY is not configured. Please set it in your environment variables or Streamlit secrets."
         )
     return Groq(api_key=api_key)
 
@@ -116,11 +131,11 @@ def _fetch_transcript_rapidapi(video_id):
     _last_rapidapi_error = None
     import requests
 
-    rapidapi_key = os.getenv("RAPIDAPI_KEY")
+    rapidapi_key = get_config("RAPIDAPI_KEY")
     if not rapidapi_key:
         return None
 
-    rapidapi_host = os.getenv("RAPIDAPI_HOST", "youtube-2-transcript.p.rapidapi.com")
+    rapidapi_host = get_config("RAPIDAPI_HOST", "youtube-2-transcript.p.rapidapi.com")
 
     headers = {
         "x-rapidapi-key": rapidapi_key,
@@ -129,13 +144,13 @@ def _fetch_transcript_rapidapi(video_id):
 
     try:
         if "youtube-2-transcript" in rapidapi_host:
-            rapidapi_url = os.getenv("RAPIDAPI_URL", f"https://{rapidapi_host}/transcript-with-url")
+            rapidapi_url = get_config("RAPIDAPI_URL", f"https://{rapidapi_host}/transcript-with-url")
             params = {
                 "url": f"https://www.youtube.com/watch?v={video_id}",
                 "flat_text": "true",
             }
         else:
-            rapidapi_url = os.getenv("RAPIDAPI_URL", f"https://{rapidapi_host}/transcript")
+            rapidapi_url = get_config("RAPIDAPI_URL", f"https://{rapidapi_host}/transcript")
             params = {"video_id": video_id}
 
         response = requests.get(rapidapi_url, headers=headers, params=params, timeout=15)
@@ -213,7 +228,7 @@ def _fetch_transcript_local(video_id):
 def get_transcript(video_id):
     """Fetch the best available transcript for the given video ID."""
     # 1. Try RapidAPI if configured (recommended for cloud deployments)
-    if os.getenv("RAPIDAPI_KEY"):
+    if get_config("RAPIDAPI_KEY"):
         rapid_text = _fetch_transcript_rapidapi(video_id)
         if rapid_text and rapid_text.strip():
             return rapid_text.strip()
@@ -264,7 +279,7 @@ def build_prompt(video_title, transcript):
 def invoke_llm(prompt):
     """Send the prompt to Groq and return the parsed JSON response."""
     client = get_groq_client()
-    model = os.getenv("GROQ_MODEL", "openai/gpt-oss-120b")
+    model = get_config("GROQ_MODEL", "openai/gpt-oss-120b")
 
     try:
         response = client.chat.completions.create(

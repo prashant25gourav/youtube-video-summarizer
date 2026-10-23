@@ -1,12 +1,11 @@
 import json
 import os
-import time
 from html import escape
 
-import requests
 import streamlit as st
+import streamlit.components.v1 as components
 
-BACKEND_URL = os.getenv("BACKEND_URL", "http://127.0.0.1:8000").rstrip("/")
+from ai_backend import extract_video_id, generate_summary
 
 
 # ==========================================================
@@ -327,21 +326,23 @@ st.markdown(
     .chip {
         display: inline-flex;
         align-items: center;
-        padding: 0.62rem 0.92rem;
+        padding: 0.52rem 0.95rem;
         border-radius: 999px;
-        font-size: 0.9rem;
+        font-size: 0.88rem;
         font-weight: 600;
         color: #f8fafc;
-        background: linear-gradient(135deg, rgba(255, 245, 245, 0.95), rgba(255, 0, 0, 0.14));
-        border: 1px solid rgba(255, 0, 0, 0.28);
-        box-shadow: 0 10px 20px rgba(255, 0, 0, 0.12);
-        transition: transform 200ms ease, background 200ms ease, box-shadow 200ms ease;
+        background: rgba(30, 41, 59, 0.85);
+        border: 1px solid rgba(239, 68, 68, 0.4);
+        box-shadow: 0 4px 14px rgba(2, 6, 23, 0.25);
+        transition: transform 200ms ease, background 200ms ease, border-color 200ms ease, box-shadow 200ms ease;
     }
 
     .chip:hover {
         transform: translateY(-1px);
-        background: linear-gradient(135deg, rgba(255, 245, 245, 0.98), rgba(255, 0, 0, 0.2));
-        box-shadow: 0 12px 24px rgba(255, 0, 0, 0.18);
+        background: rgba(51, 65, 85, 0.95);
+        border-color: rgba(239, 68, 68, 0.7);
+        color: #ffffff;
+        box-shadow: 0 6px 18px rgba(239, 68, 68, 0.2);
     }
 
     .takeaway-card {
@@ -421,7 +422,7 @@ st.markdown(
         box-shadow: 0 16px 38px rgba(127, 29, 29, 0.24);
     }
 
-    div.stButton > button {
+    .input-card div.stButton > button {
         width: min(430px, 100%);
         height: 56px;
         padding: 0 1.2rem;
@@ -438,10 +439,38 @@ st.markdown(
         margin: 0 auto;
     }
 
-    div.stButton > button:hover {
+    .input-card div.stButton > button:hover {
         transform: translateY(-1px) scale(1.01);
         box-shadow: 0 18px 34px rgba(230, 0, 0, 0.32);
         filter: brightness(1.03);
+    }
+
+    div.stDownloadButton > button {
+        width: 100%;
+        height: 44px;
+        min-height: 44px;
+        padding: 0 1rem;
+        border-radius: 12px;
+        font-size: 0.9rem;
+        font-weight: 600;
+        background: rgba(15, 23, 42, 0.85);
+        color: #f1f5f9;
+        border: 1px solid rgba(148, 163, 184, 0.24);
+        box-shadow: 0 4px 14px rgba(2, 6, 23, 0.25);
+        transition: transform 200ms ease, background 200ms ease, border-color 200ms ease, box-shadow 200ms ease;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        box-sizing: border-box;
+    }
+
+    div.stDownloadButton > button:hover {
+        background: rgba(30, 41, 59, 0.95);
+        border-color: rgba(239, 68, 68, 0.5);
+        color: #ffffff;
+        transform: translateY(-1px);
+        box-shadow: 0 6px 18px rgba(239, 68, 68, 0.18);
     }
 
     .stTextInput > div > div > input {
@@ -554,6 +583,102 @@ def build_markdown(result):
     return "\n".join(lines)
 
 
+def render_copy_button(text_to_copy: str):
+    escaped_json = json.dumps(text_to_copy)
+    comp_html = f"""
+    <!DOCTYPE html>
+    <html>
+    <head>
+    <style>
+      * {{ margin: 0; padding: 0; box-sizing: border-box; }}
+      body {{ font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: transparent; overflow: hidden; }}
+      .copy-btn {{
+        width: 100%;
+        height: 44px;
+        background: rgba(15, 23, 42, 0.85);
+        color: #f1f5f9;
+        border: 1px solid rgba(148, 163, 184, 0.24);
+        border-radius: 12px;
+        font-size: 0.9rem;
+        font-weight: 600;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0.45rem;
+        transition: transform 200ms ease, background 200ms ease, border-color 200ms ease, box-shadow 200ms ease;
+      }}
+      .copy-btn:hover {{
+        background: rgba(30, 41, 59, 0.95);
+        border-color: rgba(239, 68, 68, 0.5);
+        color: #ffffff;
+        transform: translateY(-1px);
+        box-shadow: 0 6px 18px rgba(239, 68, 68, 0.18);
+      }}
+      .copy-btn.copied {{
+        background: rgba(6, 78, 59, 0.9);
+        border-color: #10b981;
+        color: #ecfdf5;
+      }}
+    </style>
+    </head>
+    <body>
+      <button id="copy-btn" class="copy-btn" onclick="copy()">
+        <span id="btn-icon">📋</span> <span id="btn-text">Copy Summary</span>
+      </button>
+      <script>
+        const text = {escaped_json};
+        function copy() {{
+          const btn = document.getElementById('copy-btn');
+          const btnIcon = document.getElementById('btn-icon');
+          const btnText = document.getElementById('btn-text');
+          
+          function showSuccess() {{
+            btn.classList.add('copied');
+            btnIcon.innerText = '✓';
+            btnText.innerText = 'Copied!';
+            setTimeout(() => {{
+              btn.classList.remove('copied');
+              btnIcon.innerText = '📋';
+              btnText.innerText = 'Copy Summary';
+            }}, 2000);
+          }}
+
+          if (navigator.clipboard && window.isSecureContext) {{
+            navigator.clipboard.writeText(text).then(showSuccess).catch(() => {{
+              fallbackCopy();
+            }});
+          }} else {{
+            fallbackCopy();
+          }}
+
+          function fallbackCopy() {{
+            try {{
+              const ta = document.createElement('textarea');
+              ta.value = text;
+              ta.style.position = 'fixed';
+              ta.style.opacity = '0';
+              document.body.appendChild(ta);
+              ta.focus();
+              ta.select();
+              document.execCommand('copy');
+              document.body.removeChild(ta);
+              showSuccess();
+            }} catch(e) {{
+              btnText.innerText = 'Error copying';
+            }}
+          }}
+        }}
+      </script>
+    </body>
+    </html>
+    """
+    if hasattr(st, "iframe"):
+        st.iframe(comp_html, height=44)
+    else:
+        components.html(comp_html, height=44)
+
+
 def render_error(message):
     """Render a clean, user-friendly error message in the UI."""
 
@@ -568,36 +693,13 @@ def render_error(message):
     )
 
 
-def check_backend_health(status_container=None, max_retries=5, retry_delay=4):
+@st.cache_data(ttl=86400, show_spinner=False)
+def get_cached_summary(video_id: str, _url: str) -> dict:
     """
-    Check if the backend is reachable via GET /health with graceful cold-start retry.
-    Returns True if healthy/responding, False if unavailable after retries.
+    Generate and cache video summary for 24 hours keyed by video ID.
+    Prevents repeat videos from consuming API quota.
     """
-    for attempt in range(1, max_retries + 1):
-        try:
-            resp = requests.get(f"{BACKEND_URL}/health", timeout=5)
-            if resp.status_code in (200, 404):
-                return True
-            if resp.status_code in (502, 503, 504):
-                if status_container:
-                    status_container.update(label="⏳ Waking up backend...", state="running")
-                st.write("Backend is starting up. Please wait a moment...")
-                if attempt < max_retries:
-                    time.sleep(retry_delay)
-                    continue
-        except (requests.exceptions.ConnectionError, requests.exceptions.Timeout):
-            if status_container:
-                status_container.update(label="⏳ Waking up backend...", state="running")
-            st.write("Backend is starting up. Please wait a moment...")
-            if attempt < max_retries:
-                time.sleep(retry_delay)
-                continue
-        except Exception:
-            if attempt < max_retries:
-                time.sleep(retry_delay)
-                continue
-
-    return False
+    return generate_summary(_url)
 
 
 def get_metadata_stat(result):
@@ -684,11 +786,7 @@ def render_results(result):
             use_container_width=True,
         )
     with action_cols[2]:
-        if st.button("Copy Summary", use_container_width=True):
-            st.session_state.copy_feedback = "Summary is ready to copy from the generated output."
-
-    if st.session_state.copy_feedback:
-        st.caption(st.session_state.copy_feedback)
+        render_copy_button(summary_text)
 
     st.markdown("<div style='margin-top: 1.3rem;'></div>", unsafe_allow_html=True)
     st.markdown("<div class='section-title'>Key Points</div>", unsafe_allow_html=True)
@@ -751,7 +849,6 @@ def render_results(result):
 st.markdown(
     """
     <div class="hero-shell">
-        <div class="hero-pill">⚡ AI Portfolio Project</div>
         <h1 class="hero-title">🎥 AI YouTube Video Summarizer</h1>
         <p class="hero-subtitle">Summarize any YouTube video instantly using Groq LLM and turn long content into concise, polished insights with structured takeaways and next steps.</p>
     </div>
@@ -775,78 +872,59 @@ st.markdown("<div class='pill-caption'>The app will read the transcript, build a
 st.markdown("</div>", unsafe_allow_html=True)
 
 if generate:
-    if not youtube_url.strip():
+    clean_url = youtube_url.strip()
+    if not clean_url:
         render_error("Please enter a YouTube URL before generating a summary.")
     else:
-        with st.status("⚡ Connecting to backend...", expanded=True) as status:
-            is_healthy = check_backend_health(status_container=status)
+        try:
+            video_id = extract_video_id(clean_url)
+        except ValueError:
+            render_error(
+                "Please enter a valid YouTube video URL (e.g., https://www.youtube.com/watch?v=... or https://youtu.be/...)."
+            )
+            st.stop()
 
-            if not is_healthy:
-                status.update(label="Backend unavailable", state="error")
-                render_error(
-                    "The backend is starting up or temporarily unavailable. Please wait a moment and try again."
-                )
-                st.session_state.summary_result = None
-                st.stop()
-
-            status.update(label="🎥 Reading Transcript", state="running")
-            st.write("Reading transcript...")
+        with st.status("🎥 Processing Video...", expanded=True) as status:
             try:
-                status.update(label="🧠 Building Prompt", state="running")
-                st.write("Building prompt...")
-                response = requests.post(
-                    f"{BACKEND_URL}/summarize",
-                    json={"url": youtube_url},
-                    timeout=300,
-                )
+                status.update(label="🤖 Generating AI Summary...", state="running")
+                st.write("Extracting transcript and generating structured summary with Groq...")
 
-                if response.status_code != 200:
-                    status.update(label="Generation failed", state="error")
-                    try:
-                        detail = response.json().get("detail")
-                    except Exception:
-                        detail = None
-                    if not detail:
-                        if response.status_code >= 500:
-                            detail = f"The backend encountered an internal error (HTTP {response.status_code}). Please try again."
-                        else:
-                            detail = f"Request failed with status code {response.status_code}."
-                    render_error(detail)
-                    st.session_state.summary_result = None
-                    st.stop()
-
-                status.update(label="🤖 Generating Summary", state="running")
-                st.write("Generating summary...")
-                try:
-                    result = response.json()
-                except Exception:
-                    status.update(label="Generation failed", state="error")
-                    render_error("Received an invalid response format from the backend.")
-                    st.session_state.summary_result = None
-                    st.stop()
-
+                result = get_cached_summary(video_id, _url=clean_url)
                 st.session_state.summary_result = result
-                status.update(label="📋 Formatting Output", state="running")
-                st.write("Formatting output...")
-                status.update(label="✅ Finished", state="complete")
 
-            except requests.exceptions.Timeout:
-                status.update(label="Request timed out", state="error")
-                render_error("The request timed out while generating the summary. Please try again.")
-                st.session_state.summary_result = None
-                st.stop()
+                status.update(label="✅ Summary Ready", state="complete")
+                st.write("Summary generated successfully!")
 
-            except requests.exceptions.ConnectionError:
-                status.update(label="Connection error", state="error")
-                render_error(
-                    "The connection to the backend was interrupted. Please check if the server is running."
-                )
+            except RuntimeError as exc:
+                status.update(label="Generation failed", state="error")
+                msg = str(exc)
+                msg_lower = msg.lower()
+
+                if "429" in msg_lower or "quota" in msg_lower or "rate limit" in msg_lower:
+                    render_error(
+                        "API rate limit or monthly quota exceeded (HTTP 429). Please wait a few moments or check your API key quota."
+                    )
+                elif "private" in msg_lower or "unavailable" in msg_lower or "live" in msg_lower or "captions" in msg_lower or "transcript" in msg_lower:
+                    render_error(
+                        "Unable to retrieve a transcript for this video. The video may be private, live, or have closed captions disabled by the creator."
+                    )
+                elif "groq_api_key" in msg_lower or "not configured" in msg_lower or "auth_failed" in msg_lower or "401" in msg_lower or "403" in msg_lower:
+                    render_error(
+                        "API key is not configured or authentication failed. Please set GROQ_API_KEY in your environment or Streamlit secrets."
+                    )
+                elif "decommissioned" in msg_lower or "model" in msg_lower:
+                    render_error(
+                        "The configured Groq model is unavailable. Please check the GROQ_MODEL setting."
+                    )
+                else:
+                    render_error(msg)
+
                 st.session_state.summary_result = None
                 st.stop()
 
             except Exception as exc:
                 status.update(label="Generation failed", state="error")
-                render_error("An unexpected error occurred while generating the summary.")
+                render_error(f"An unexpected error occurred while generating the summary: {exc}")
                 st.session_state.summary_result = None
                 st.stop()
 
@@ -858,7 +936,7 @@ st.markdown(
     <div class="footer-note">
         ────────────────────────<br>
         
-        Groq • FastAPI • Streamlit
+        Groq • Streamlit
        
     </div>
     """,
